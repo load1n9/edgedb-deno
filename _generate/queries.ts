@@ -1,11 +1,11 @@
 // tslint:disable
-import {createClient, adapter, $} from "../mod.ts";
-import type {ConnectConfig} from "../_src/conUtils.ts";
-import type {CommandOptions} from "./commandutil.ts";
+import { $, adapter, createClient } from "../mod.ts";
+import type { ConnectConfig } from "../_src/conUtils.ts";
+import type { CommandOptions } from "./commandutil.ts";
 // import {$} from "./codecToType";
 // import type {QueryType} from "./codecToType";
-import type {Target} from "./genutil.ts";
-import {Cardinality} from "../_src/ifaces.ts";
+import type { Target } from "./genutil.ts";
+import { Cardinality } from "../_src/ifaces.ts";
 
 // generate per-file queries
 // generate queries in a single file
@@ -28,7 +28,7 @@ currently supported.`);
     console.warn(
       `No \`edgedb.toml\` found, using process.cwd() as root directory:
    ${params.root}
-`
+`,
     );
   } else {
     console.log(`Detected project root via edgedb.toml:`);
@@ -36,7 +36,7 @@ currently supported.`);
   }
   const client = createClient({
     ...params.connectionConfig,
-    concurrency: 5
+    concurrency: 5,
   });
 
   // file mode: introspect all queries and generate one file
@@ -62,7 +62,7 @@ currently supported.`);
       const files = await generateFiles({
         target: params.options.target!,
         path,
-        types
+        types,
       });
       for (const f of files) {
         if (!filesByExtension[f.extension]) {
@@ -71,7 +71,7 @@ currently supported.`);
           filesByExtension[f.extension].contents += `\n\n` + f.contents;
           filesByExtension[f.extension].imports = {
             ...filesByExtension[f.extension].imports,
-            ...f.imports
+            ...f.imports,
           };
         }
       }
@@ -79,23 +79,22 @@ currently supported.`);
     console.log(
       `Generating query file${
         Object.keys(filesByExtension).length > 1 ? "s" : ""
-      }...`
+      }...`,
     );
     for (const [extension, file] of Object.entries(filesByExtension)) {
-      const filePath =
-        (adapter.path.isAbsolute(params.options.file)
-          ? params.options.file
-          : adapter.path.join(
-              adapter.process.cwd(), // all paths computed relative to cwd
-              params.options.file
-            )) + extension;
+      const filePath = (adapter.path.isAbsolute(params.options.file)
+        ? params.options.file
+        : adapter.path.join(
+          adapter.process.cwd(), // all paths computed relative to cwd
+          params.options.file,
+        )) + extension;
       const prettyPath = adapter.path.isAbsolute(params.options.file)
         ? params.options.file + extension
         : "./" + adapter.path.posix.relative(root, filePath);
       console.log(`   ${prettyPath}`);
       await adapter.fs.writeFile(
         filePath,
-        `${stringifyImports(file.imports)}\n\n${file.contents}`
+        `${stringifyImports(file.imports)}\n\n${file.contents}`,
       );
     }
     adapter.exit();
@@ -109,14 +108,14 @@ currently supported.`);
     const files = await generateFiles({
       target: params.options.target!,
       path,
-      types
+      types,
     });
     for (const f of files) {
       const prettyPath = "./" + adapter.path.posix.relative(root, f.path);
       console.log(`   ${prettyPath}`);
       await adapter.fs.writeFile(
         f.path,
-        `${stringifyImports(f.imports)}\n\n${f.contents}`
+        `${stringifyImports(f.imports)}\n\n${f.contents}`,
       );
     }
   }
@@ -138,15 +137,16 @@ currently supported.`);
   //   generate output file
 }
 
-function stringifyImports(imports: {[k: string]: boolean}) {
+function stringifyImports(imports: { [k: string]: boolean }) {
   if (Object.keys(imports).length === 0) return "";
   return `import type {${Object.keys(imports).join(", ")}} from "edgedb";`;
 }
 
+// deno-lint-ignore require-await
 async function getMatches(root: string) {
   return adapter.walk(root, {
     match: [/[^\/]\.edgeql$/],
-    skip: [/node_modules/, /dbschema\/migrations/]
+    skip: [/node_modules/, /dbschema\/migrations/],
   });
   // return globby.globby("**/*.edgeql", {
   //   cwd: root,
@@ -171,25 +171,25 @@ function generateFiles(params: {
 }): {
   path: string;
   contents: string;
-  imports: {[k: string]: boolean};
+  imports: { [k: string]: boolean };
   extension: string;
 }[] {
   const queryFileName = adapter.path.basename(params.path);
   // client.query; Cardinality.MANY;Cardinality.AT_LEAST_ONE;
   // client.querySingle; Cardinality.AT_MOST_ONE
   // client.queryRequiredSingle; Cardinality.ONE;
-  const method =
-    params.types.cardinality === Cardinality.ONE
-      ? "queryRequiredSingle"
-      : params.types.cardinality === Cardinality.AT_MOST_ONE
-      ? "querySingle"
-      : "query";
+  const method = params.types.cardinality === Cardinality.ONE
+    ? "queryRequiredSingle"
+    : params.types.cardinality === Cardinality.AT_MOST_ONE
+    ? "querySingle"
+    : "query";
   const functionName = queryFileName.replace(".edgeql", "");
+  // deno-lint-ignore no-explicit-any
   const imports: any = {};
   for (const i of params.types.imports) {
     imports[i] = true;
   }
-  const tsImports = {Client: true, ...imports};
+  const tsImports = { Client: true, ...imports };
 
   const hasArgs = params.types.args && params.types.args !== "null";
   const tsImpl = `async function ${functionName}(client: Client${
@@ -217,16 +217,17 @@ function generateFiles(params: {
       return [
         {
           path: `${params.path}.js`,
-          contents: `${jsImpl}\n\nmodule.exports.${functionName} = ${functionName};`,
+          contents:
+            `${jsImpl}\n\nmodule.exports.${functionName} = ${functionName};`,
           imports: {},
-          extension: ".js"
+          extension: ".js",
         },
         {
           path: `${params.path}.d.ts`,
           contents: `export ${dtsImpl}`,
           imports: tsImports,
-          extension: ".d.ts"
-        }
+          extension: ".d.ts",
+        },
       ];
 
     case "deno":
@@ -235,8 +236,8 @@ function generateFiles(params: {
           path: `${params.path}.ts`,
           contents: `export ${tsImpl}`,
           imports: tsImports,
-          extension: ".ts"
-        }
+          extension: ".ts",
+        },
       ];
     case "esm":
       return [
@@ -244,14 +245,14 @@ function generateFiles(params: {
           path: `${params.path}.mjs`,
           contents: `export ${jsImpl}`,
           imports: {},
-          extension: ".mjs"
+          extension: ".mjs",
         },
         {
           path: `${params.path}.d.ts`,
           contents: `export ${dtsImpl}`,
           imports: tsImports,
-          extension: ".d.ts"
-        }
+          extension: ".d.ts",
+        },
       ];
     case "mts":
       return [
@@ -259,8 +260,8 @@ function generateFiles(params: {
           path: `${params.path}.mts`,
           contents: `export ${tsImpl}`,
           imports: tsImports,
-          extension: ".mts"
-        }
+          extension: ".mts",
+        },
       ];
     case "ts":
       return [
@@ -268,8 +269,8 @@ function generateFiles(params: {
           path: `${params.path}.ts`,
           contents: `export ${tsImpl}`,
           imports: tsImports,
-          extension: ".ts"
-        }
+          extension: ".ts",
+        },
       ];
   }
 }

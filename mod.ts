@@ -22,17 +22,21 @@ export default createClient;
 export { createClient, createHttpClient } from "./_src/nodeClient.ts";
 
 import * as adapter from "./_src/adapter.deno.ts";
+
 export { adapter };
 
 export { RawConnection as _RawConnection } from "./_src/rawConn.ts";
+
 export type { Executor } from "./_src/ifaces.ts";
 export type { Client, ConnectOptions } from "./_src/baseClient.ts";
+
 export {
   IsolationLevel,
   RetryCondition,
   RetryOptions,
   Session,
 } from "./_src/options.ts";
+
 export { defaultBackoff } from "./_src/options.ts";
 export type { BackoffFunction } from "./_src/options.ts";
 

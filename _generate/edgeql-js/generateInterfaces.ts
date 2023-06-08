@@ -1,24 +1,29 @@
-import {CodeBuffer, js, t} from "../builders.ts";
-import type {GeneratorParams} from "../genutil.ts";
-import {$} from "../genutil.ts";
-import {makePlainIdent, quote, splitName, toTSScalarType} from "../genutil.ts";
+import { CodeBuffer, js, t } from "../builders.ts";
+import type { GeneratorParams } from "../genutil.ts";
+import { $ } from "../genutil.ts";
+import {
+  makePlainIdent,
+  quote,
+  splitName,
+  toTSScalarType,
+} from "../genutil.ts";
 
 export type GenerateInterfacesParams = Pick<GeneratorParams, "dir" | "types">;
 
 export const generateInterfaces = (params: GenerateInterfacesParams) => {
-  const {dir, types} = params;
+  const { dir, types } = params;
 
   const plainTypesCode = dir.getPath("interfaces");
   plainTypesCode.addImportStar("edgedb", "edgedb", {
-    typeOnly: true
+    typeOnly: true,
   });
   const plainTypeModules = new Map<
     string,
-    {internalName: string; buf: CodeBuffer; types: Map<string, string>}
+    { internalName: string; buf: CodeBuffer; types: Map<string, string> }
   >();
 
   const getPlainTypeModule = (
-    typeName: string
+    typeName: string,
   ): {
     tMod: string;
     tName: string;
@@ -28,42 +33,46 @@ export const generateInterfaces = (params: GenerateInterfacesParams) => {
       types: Map<string, string>;
     };
   } => {
-    const {mod: tMod, name: tName} = splitName(typeName);
+    const { mod: tMod, name: tName } = splitName(typeName);
     if (!plainTypeModules.has(tMod)) {
       plainTypeModules.set(tMod, {
         internalName: makePlainIdent(tMod),
         buf: new CodeBuffer(),
-        types: new Map()
+        types: new Map(),
       });
     }
-    return {tMod, tName, module: plainTypeModules.get(tMod)!};
+    return { tMod, tName, module: plainTypeModules.get(tMod)! };
   };
 
-  const _getTypeName =
-    (mod: string) =>
-    (typeName: string, withModule: boolean = false): string => {
-      const {tMod, tName, module} = getPlainTypeModule(typeName);
-      return (
-        ((mod !== tMod || withModule) && tMod !== "default"
-          ? `${module.internalName}.`
-          : "") + `${makePlainIdent(tName)}`
-      );
-    };
+  const _getTypeName = (mod: string) =>
+  (
+    typeName: string,
+    withModule = false,
+  ): string => {
+    const { tMod, tName, module } = getPlainTypeModule(typeName);
+    return (
+      ((mod !== tMod || withModule) && tMod !== "default"
+        ? `${module.internalName}.`
+        : "") + `${makePlainIdent(tName)}`
+    );
+  };
 
   for (const type of types.values()) {
     if (type.kind === "scalar" && type.enum_values?.length) {
       // generate plain enum type
-      const {mod: enumMod, name: enumName} = splitName(type.name);
+      const { mod: enumMod, name: enumName } = splitName(type.name);
       const getEnumTypeName = _getTypeName(enumMod);
 
-      const {module} = getPlainTypeModule(type.name);
+      const { module } = getPlainTypeModule(type.name);
       module.types.set(enumName, getEnumTypeName(type.name, true));
       module.buf.writeln(
         [
-          t`export type ${getEnumTypeName(type.name)} = ${type.enum_values
-            .map(val => quote(val))
-            .join(" | ")};`
-        ]
+          t`export type ${getEnumTypeName(type.name)} = ${
+            type.enum_values
+              .map((val) => quote(val))
+              .join(" | ")
+          };`,
+        ],
         // ...type.enum_values.map(val => [t`${quote(val)}`]).join(" | "),
         // [t`}`]
       );
@@ -99,7 +108,7 @@ export const generateInterfaces = (params: GenerateInterfacesParams) => {
       continue;
     }
 
-    const {mod, name} = splitName(type.name);
+    const { mod, name } = splitName(type.name);
     const body = dir.getModule(mod);
     body.registerRef(type.name, type.id);
 
@@ -118,43 +127,47 @@ export const generateInterfaces = (params: GenerateInterfacesParams) => {
           targetType as $.introspect.PrimitiveType,
           types,
           {
-            getEnumRef: enumType => getTypeName(enumType.name),
-            edgedbDatatypePrefix: ""
-          }
+            getEnumRef: (enumType) => getTypeName(enumType.name),
+            edgedbDatatypePrefix: "",
+          },
         ).join("");
       }
     };
 
-    const {module: plainTypeModule} = getPlainTypeModule(type.name);
-    const pointers = type.pointers.filter(ptr => ptr.name !== "__type__");
+    const { module: plainTypeModule } = getPlainTypeModule(type.name);
+    const pointers = type.pointers.filter((ptr) => ptr.name !== "__type__");
     plainTypeModule.types.set(name, getTypeName(type.name, true));
     plainTypeModule.buf.writeln([
       t`export interface ${getTypeName(type.name)}${
         type.bases.length
-          ? ` extends ${type.bases
-              .map(({id}) => {
+          ? ` extends ${
+            type.bases
+              .map(({ id }) => {
                 const baseType = types.get(id);
                 return getTypeName(baseType.name);
               })
-              .join(", ")}`
+              .join(", ")
+          }`
           : ""
       } ${
         pointers.length
-          ? `{\n${pointers
-              .map(pointer => {
+          ? `{\n${
+            pointers
+              .map((pointer) => {
                 const isOptional = pointer.card === $.Cardinality.AtMostOne;
-                return `  ${quote(pointer.name)}${
-                  isOptional ? "?" : ""
-                }: ${getTSType(pointer)}${
+                return `  ${quote(pointer.name)}${isOptional ? "?" : ""}: ${
+                  getTSType(pointer)
+                }${
                   pointer.card === $.Cardinality.Many ||
-                  pointer.card === $.Cardinality.AtLeastOne
+                    pointer.card === $.Cardinality.AtLeastOne
                     ? "[]"
                     : ""
                 }${isOptional ? " | null" : ""};`;
               })
-              .join("\n")}\n}`
+              .join("\n")
+          }\n}`
           : "{}"
-      }\n`
+      }\n`,
     ]);
   }
 
@@ -169,13 +182,15 @@ export const generateInterfaces = (params: GenerateInterfacesParams) => {
       plainTypesCode.indented(() => plainTypesCode.writeBuf(module.buf));
       plainTypesCode.writeln([t`}`]);
       plainTypesCode.writeln([js`}`]);
-      plainTypesCode.addExport(module.internalName, {modes: ["js"]});
+      plainTypesCode.addExport(module.internalName, { modes: ["js"] });
     }
 
     plainTypesExportBuf.writeln([
-      t`  ${quote(moduleName)}: {\n${[...module.types.entries()]
-        .map(([name, typeName]) => `    ${quote(name)}: ${typeName};`)
-        .join("\n")}\n  };`
+      t`  ${quote(moduleName)}: {\n${
+        [...module.types.entries()]
+          .map(([name, typeName]) => `    ${quote(name)}: ${typeName};`)
+          .join("\n")
+      }\n  };`,
     ]);
   }
   plainTypesCode.writeln([t`export interface types {`]);
@@ -197,6 +212,6 @@ export namespace helper {
   export type Props<T> = Pick<T, propertyKeys<T>>;
   export type Links<T> = Pick<T, linkKeys<T>>;
 }
-`
+`,
   ]);
 };

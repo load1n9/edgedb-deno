@@ -1,21 +1,21 @@
 // tslint:disable:no-console
-import type {CommandOptions} from "./commandutil.ts";
-import {exitWithError} from "./genutil.ts";
+import type { CommandOptions } from "./commandutil.ts";
+import { exitWithError } from "./genutil.ts";
 
-import {$, adapter, Client, createClient} from "../mod.ts";
-import {DirBuilder} from "./builders.ts";
+import { $, adapter, Client, createClient } from "../mod.ts";
+import { DirBuilder } from "./builders.ts";
 
-import type {ConnectConfig} from "../_src/conUtils.ts";
-import {generateInterfaces} from "./edgeql-js/generateInterfaces.ts";
+import type { ConnectConfig } from "../_src/conUtils.ts";
+import { generateInterfaces } from "./edgeql-js/generateInterfaces.ts";
 
-const {path} = adapter;
+const { path } = adapter;
 
 export async function runInterfacesGenerator(params: {
   root: string | null;
   options: CommandOptions;
   connectionConfig: ConnectConfig;
 }) {
-  const {root, options, connectionConfig} = params;
+  const { root, options, connectionConfig } = params;
 
   let outFile: string;
   if (options.file) {
@@ -26,7 +26,7 @@ export async function runInterfacesGenerator(params: {
     outFile = path.join(root, "dbschema/interfaces.ts");
   } else {
     throw new Error(
-      `No edgedb.toml found. Initialize an EdgeDB project with\n\`edgedb project init\` or specify an output file with \`--file\``
+      `No edgedb.toml found. Initialize an EdgeDB project with\n\`edgedb project init\` or specify an output file with \`--file\``,
     );
   }
 
@@ -35,9 +35,7 @@ export async function runInterfacesGenerator(params: {
   if (root) {
     const relativeOutputDir = path.posix.relative(root, outFile);
     outputDirIsInProject = !relativeOutputDir.startsWith("..");
-    prettyOutputDir = outputDirIsInProject
-      ? `./${relativeOutputDir}`
-      : outFile;
+    prettyOutputDir = outputDirIsInProject ? `./${relativeOutputDir}` : outFile;
   } else {
     prettyOutputDir = outFile;
   }
@@ -46,7 +44,7 @@ export async function runInterfacesGenerator(params: {
   try {
     cxn = createClient({
       ...connectionConfig,
-      concurrency: 5
+      concurrency: 5,
     });
   } catch (e) {
     exitWithError(`Failed to connect: ${(e as Error).message}`);
@@ -59,7 +57,7 @@ export async function runInterfacesGenerator(params: {
   const types = await $.introspect.types(cxn);
   const generatorParams = {
     dir,
-    types
+    types,
   };
   console.log(`Generating interfaces...`);
   generateInterfaces(generatorParams);
@@ -68,7 +66,7 @@ export async function runInterfacesGenerator(params: {
   const rendered = file.render({
     mode: "ts",
     moduleKind: "esm",
-    moduleExtension: ""
+    moduleExtension: "",
   });
 
   console.log(`Writing interfaces file...`);

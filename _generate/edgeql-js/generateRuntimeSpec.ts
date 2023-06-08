@@ -1,18 +1,18 @@
-import {dts, t, r, ts} from "../builders.ts";
-import type {GeneratorParams} from "../genutil.ts";
+import { dts, r, t, ts } from "../builders.ts";
+import type { GeneratorParams } from "../genutil.ts";
 
 export const generateRuntimeSpec = (params: GeneratorParams) => {
-  const {dir, types} = params;
+  const { dir, types } = params;
 
   const spec = dir.getPath("__spec__");
 
-  spec.addImportStar("$", "./reflection", {allowFileExt: true});
+  spec.addImportStar("$", "./reflection", { allowFileExt: true });
   spec.writeln([
     dts`declare `,
     `const spec`,
     t`: $.introspect.Types`,
     r` = new $.StrictMap()`,
-    `;`
+    `;`,
   ]);
   spec.nl();
 
@@ -20,7 +20,7 @@ export const generateRuntimeSpec = (params: GeneratorParams) => {
     spec.writeln([
       r`spec.set("${type.id}", ${JSON.stringify(type)}`,
       ts` as any`,
-      r`);`
+      r`);`,
     ]);
   }
 

@@ -1,18 +1,18 @@
-import {$} from "../mod.ts";
-import type {CodeFragment} from "./builders.ts";
-import type {FuncopDef} from "./edgeql-js/generateFunctionTypes.ts";
-import {getStringRepresentation} from "./edgeql-js/generateObjectTypes.ts";
-import {frag, getRef, makeValidIdent, quote} from "./genutil.ts";
+import { $ } from "../mod.ts";
+import type { CodeFragment } from "./builders.ts";
+import type { FuncopDef } from "./edgeql-js/generateFunctionTypes.ts";
+import { getStringRepresentation } from "./edgeql-js/generateObjectTypes.ts";
+import { frag, getRef, makeValidIdent, quote } from "./genutil.ts";
 
 export type AnytypeDef =
-  | {kind: "castable"; type: CodeFragment[]; returnAnytypeWrapper: string}
+  | { kind: "castable"; type: CodeFragment[]; returnAnytypeWrapper: string }
   | {
-      kind: "noncastable";
-      type: CodeFragment[];
-      typeObj: $.introspect.Type;
-      refName: string;
-      refPath: string;
-    };
+    kind: "noncastable";
+    type: CodeFragment[];
+    typeObj: $.introspect.Type;
+    refName: string;
+    refPath: string;
+  };
 
 export type FuncopDefOverload<F extends FuncopDef> = F & {
   overloadIndex: number;
@@ -24,22 +24,22 @@ export function expandFuncopAnytypeOverloads<F extends FuncopDef>(
   overloads: F[],
   types: $.introspect.Types,
   casts: $.introspect.Casts,
-  implicitCastableRootTypes: string[]
+  implicitCastableRootTypes: string[],
 ): FuncopDefOverload<F>[] {
   return $.util.flatMap(overloads, (funcDef, overloadIndex) => {
     const overload: FuncopDefOverload<F> = {
       ...funcDef,
       overloadIndex,
       params: groupParams(funcDef.params, types),
-      anytypes: null
+      anytypes: null,
     };
 
     // create an anytype overload for 'range<anypoint>' so 'anypoint'
     // gets inferred to the same type in return type
     const anypointParams = [
       ...overload.params.positional,
-      ...overload.params.named
-    ].filter(param => param.type.name.includes("anypoint"));
+      ...overload.params.named,
+    ].filter((param) => param.type.name.includes("anypoint"));
     if (anypointParams.length) {
       return [
         {
@@ -49,9 +49,9 @@ export function expandFuncopAnytypeOverloads<F extends FuncopDef>(
             type: [getRef("std::anypoint")],
             typeObj: anypointParams[0].type,
             refName: anypointParams[0].typeName,
-            refPath: findPathOfAnytype(anypointParams[0].type.id, types)
-          }
-        }
+            refPath: findPathOfAnytype(anypointParams[0].type.id, types),
+          },
+        },
       ];
     }
 
@@ -75,14 +75,13 @@ export function expandFuncopAnytypeOverloads<F extends FuncopDef>(
 
     const anytypeParams = [
       ...overload.params.positional,
-      ...overload.params.named
-    ].filter(param => param.type.name.includes("anytype"));
+      ...overload.params.named,
+    ].filter((param) => param.type.name.includes("anytype"));
 
     if (anytypeParams.length) {
-      const hasArrayType =
-        anytypeParams.some(param =>
-          param.type.name.includes("array<anytype>")
-        ) || overload.return_type.name.includes("array<anytype>");
+      const hasArrayType = anytypeParams.some((param) =>
+        param.type.name.includes("array<anytype>")
+      ) || overload.return_type.name.includes("array<anytype>");
 
       const catchAllOverload: FuncopDefOverload<F> = {
         ...overload,
@@ -91,57 +90,57 @@ export function expandFuncopAnytypeOverloads<F extends FuncopDef>(
           type: [hasArrayType ? "$.NonArrayType" : "$.BaseType"],
           typeObj: anytypeParams[0].type,
           refName: anytypeParams[0].typeName,
-          refPath: findPathOfAnytype(anytypeParams[0].type.id, types)
-        }
+          refPath: findPathOfAnytype(anytypeParams[0].type.id, types),
+        },
       };
 
       if (anytypeParams.length === 1) {
         return [catchAllOverload];
       } else {
         return [
-          ...implicitCastableRootTypes.map(rootTypeId => ({
+          ...implicitCastableRootTypes.map((rootTypeId) => ({
             ...overload,
             anytypes: {
               kind: "castable" as const,
               type: getStringRepresentation(types.get(rootTypeId), {
                 types,
-                casts: casts.implicitCastFromMap
+                casts: casts.implicitCastFromMap,
               }).staticType,
-              returnAnytypeWrapper: "_.syntax.getSharedParentPrimitive"
-            }
+              returnAnytypeWrapper: "_.syntax.getSharedParentPrimitive",
+            },
           })),
           ...(!hasArrayType
-            ? implicitCastableRootTypes.map(rootTypeId => ({
-                ...overload,
-                anytypes: {
-                  kind: "castable" as const,
-                  type: frag`$.ArrayType<${
-                    getStringRepresentation(types.get(rootTypeId), {
-                      types,
-                      casts: casts.implicitCastFromMap
-                    }).staticType
-                  }>`,
-                  returnAnytypeWrapper: "_.syntax.getSharedParentPrimitive"
-                }
-              }))
+            ? implicitCastableRootTypes.map((rootTypeId) => ({
+              ...overload,
+              anytypes: {
+                kind: "castable" as const,
+                type: frag`$.ArrayType<${
+                  getStringRepresentation(types.get(rootTypeId), {
+                    types,
+                    casts: casts.implicitCastFromMap,
+                  }).staticType
+                }>`,
+                returnAnytypeWrapper: "_.syntax.getSharedParentPrimitive",
+              },
+            }))
             : []),
           {
             ...overload,
             anytypes: {
               kind: "castable" as const,
               type: [`$.ObjectType`],
-              returnAnytypeWrapper: "_.syntax.mergeObjectTypes"
-            }
+              returnAnytypeWrapper: "_.syntax.mergeObjectTypes",
+            },
           },
           {
             ...overload,
             anytypes: {
               kind: "castable" as const,
               type: [`$.AnyTupleType`],
-              returnAnytypeWrapper: "_.syntax.getSharedParentPrimitive"
-            }
+              returnAnytypeWrapper: "_.syntax.getSharedParentPrimitive",
+            },
           },
-          catchAllOverload
+          catchAllOverload,
         ];
       }
     } else {
@@ -152,13 +151,13 @@ export function expandFuncopAnytypeOverloads<F extends FuncopDef>(
 
 function groupParams(
   params: $.introspect.FuncopParam[],
-  types: $.introspect.Types
+  types: $.introspect.Types,
 ) {
   return {
     positional: params
       .filter(
-        param =>
-          param.kind === "PositionalParam" || param.kind === "VariadicParam"
+        (param) =>
+          param.kind === "PositionalParam" || param.kind === "VariadicParam",
       )
       .map((param, i) => {
         let paramType = types.get(param.type.id);
@@ -171,17 +170,17 @@ function groupParams(
         return {
           ...param,
           type: paramType,
-          internalName: makeValidIdent({id: `${i}`, name: param.name}),
-          typeName: `P${i + 1}`
+          internalName: makeValidIdent({ id: `${i}`, name: param.name }),
+          typeName: `P${i + 1}`,
         };
       }),
     named: params
-      .filter(param => param.kind === "NamedOnlyParam")
-      .map(param => ({
+      .filter((param) => param.kind === "NamedOnlyParam")
+      .map((param) => ({
         ...param,
         type: types.get(param.type.id),
-        typeName: `NamedArgs[${quote(param.name)}]`
-      }))
+        typeName: `NamedArgs[${quote(param.name)}]`,
+      })),
   };
 }
 
@@ -189,7 +188,7 @@ export type GroupedParams = ReturnType<typeof groupParams>;
 
 export function findPathOfAnytype(
   typeId: string,
-  types: $.introspect.Types
+  types: $.introspect.Types,
 ): string {
   const path = _findPathOfAnytype(typeId, types);
   if (!path) {
@@ -200,7 +199,7 @@ export function findPathOfAnytype(
 
 function _findPathOfAnytype(
   typeId: string,
-  types: $.introspect.Types
+  types: $.introspect.Types,
 ): string | null {
   const type = types.get(typeId);
 
@@ -214,7 +213,7 @@ function _findPathOfAnytype(
     }
   } else if (type.kind === "tuple") {
     const isNamed = type.tuple_elements[0].name !== "0";
-    for (const {name, target_id} of type.tuple_elements) {
+    for (const { name, target_id } of type.tuple_elements) {
       const elPath = _findPathOfAnytype(target_id, types);
       if (elPath) {
         return `[${isNamed ? quote(name) : name}]${elPath}`;
@@ -229,7 +228,7 @@ function _findPathOfAnytype(
 
 export function sortFuncopOverloads<F extends FuncopDef>(
   overloads: F[],
-  typeSpecificities: TypeSpecificities
+  typeSpecificities: TypeSpecificities,
 ): F[] {
   return [...overloads].sort((a, b) => {
     let i = 0;
@@ -260,13 +259,13 @@ type TypeSpecificities = $.StrictMap<string, number>;
 
 export function getTypesSpecificity(
   types: $.introspect.Types,
-  casts: $.introspect.Casts
+  casts: $.introspect.Casts,
 ) {
   const typeSpecificities = new Map<$.introspect.Type, number>();
 
   let currentSpec = 0;
   let typesToVisit: $.introspect.Type[] = [...types.values()].filter(
-    type => (casts.implicitCastFromMap[type.id] ?? []).length === 0
+    (type) => (casts.implicitCastFromMap[type.id] ?? []).length === 0,
   );
   const nextTypesToVisit = new Set<$.introspect.Type>();
 
@@ -274,7 +273,7 @@ export function getTypesSpecificity(
     for (const type of typesToVisit) {
       typeSpecificities.set(
         type,
-        type.name === "anytype" ? Infinity : currentSpec
+        type.name === "anytype" ? Infinity : currentSpec,
       );
       for (const castableTo of casts.implicitCastMap[type.id] ?? []) {
         nextTypesToVisit.add(types.get(castableTo));
@@ -294,7 +293,7 @@ export function getTypesSpecificity(
 }
 
 export function getImplicitCastableRootTypes(
-  casts: $.introspect.Casts
+  casts: $.introspect.Casts,
 ): string[] {
   return Object.entries(casts.implicitCastMap)
     .filter(([id, castableTo]) => {

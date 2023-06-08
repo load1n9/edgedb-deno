@@ -2,20 +2,20 @@ import type {
   CodeBuilder,
   CodeFragment,
   DirBuilder,
-  IdentRef
+  IdentRef,
 } from "./builders.ts";
 import type * as introspect from "../_src/reflection/queries/types.ts";
-import {util} from "../_src/reflection/index.ts";
+import { util } from "../_src/reflection/index.ts";
 
-export {$} from "../mod.ts";
-import type {$} from "../mod.ts";
-import {adapter} from "../mod.ts";
+export { $ } from "../mod.ts";
+import type { $ } from "../mod.ts";
+import { adapter } from "../mod.ts";
 
 export function splitName(name: string) {
   if (!name.includes("::")) throw new Error(`Invalid FQN ${name}`);
   return {
     mod: name.split("::")[0],
-    name: name.split("::")[1]
+    name: name.split("::")[1],
   };
 }
 
@@ -32,7 +32,7 @@ export const makePlainIdent = (name: string): string => {
   }
   const replaced = name.replace(
     /[^A-Za-z0-9_]/g,
-    match => "0x" + match.codePointAt(0)!.toString(16)
+    (match) => "0x" + match.codePointAt(0)!.toString(16),
   );
   return replaced !== name ? `$${replaced}` : name;
 };
@@ -48,77 +48,79 @@ export const scalarToLiteralMapping: {
     extraTypes?: string[];
   };
 } = {
-  "std::int16": {type: "number"},
-  "std::int32": {type: "number"},
-  "std::int64": {type: "number", extraTypes: ["string"]},
-  "std::float32": {type: "number"},
-  "std::float64": {type: "number"},
+  "std::int16": { type: "number" },
+  "std::int32": { type: "number" },
+  "std::int64": { type: "number", extraTypes: ["string"] },
+  "std::float32": { type: "number" },
+  "std::float64": { type: "number" },
   "std::number": {
     type: "number",
     literalKind: "typeof",
-    extraTypes: ["string"]
+    extraTypes: ["string"],
   },
-  "std::str": {type: "string", literalKind: "typeof"},
-  "std::uuid": {type: "string"},
-  "std::json": {type: "unknown"},
-  "std::bool": {type: "boolean", literalKind: "typeof"},
-  "std::bigint": {type: "bigint", literalKind: "typeof"},
-  "std::bytes": {type: "Uint8Array", literalKind: "instanceof"},
+  "std::str": { type: "string", literalKind: "typeof" },
+  "std::uuid": { type: "string" },
+  "std::json": { type: "unknown" },
+  "std::bool": { type: "boolean", literalKind: "typeof" },
+  "std::bigint": { type: "bigint", literalKind: "typeof" },
+  "std::bytes": { type: "Uint8Array", literalKind: "instanceof" },
   "std::datetime": {
     type: "Date",
     literalKind: "instanceof",
-    extraTypes: ["string"]
+    extraTypes: ["string"],
   },
   "std::duration": {
     type: "edgedb.Duration",
     literalKind: "instanceof",
-    extraTypes: ["string"]
+    extraTypes: ["string"],
   },
   "cal::local_datetime": {
     type: "edgedb.LocalDateTime",
     literalKind: "instanceof",
-    extraTypes: ["string"]
+    extraTypes: ["string"],
   },
   "cal::local_date": {
     type: "edgedb.LocalDate",
     literalKind: "instanceof",
-    extraTypes: ["string"]
+    extraTypes: ["string"],
   },
   "cal::local_time": {
     type: "edgedb.LocalTime",
     literalKind: "instanceof",
-    extraTypes: ["string"]
+    extraTypes: ["string"],
   },
   "cal::relative_duration": {
     type: "edgedb.RelativeDuration",
     literalKind: "instanceof",
-    extraTypes: ["string"]
+    extraTypes: ["string"],
   },
   "cal::date_duration": {
     type: "edgedb.DateDuration",
     literalKind: "instanceof",
-    extraTypes: ["string"]
+    extraTypes: ["string"],
   },
   "cfg::memory": {
     type: "edgedb.ConfigMemory",
     literalKind: "instanceof",
-    extraTypes: ["string"]
-  }
+    extraTypes: ["string"],
+  },
 };
 
 export const literalToScalarMapping: {
-  [key: string]: {type: string; literalKind: "typeof" | "instanceof"};
+  [key: string]: { type: string; literalKind: "typeof" | "instanceof" };
 } = {};
-for (const [scalarType, {type, literalKind}] of Object.entries(
-  scalarToLiteralMapping
-)) {
+for (
+  const [scalarType, { type, literalKind }] of Object.entries(
+    scalarToLiteralMapping,
+  )
+) {
   if (literalKind) {
     if (literalToScalarMapping[type]) {
       throw new Error(
-        `literal type '${type}' cannot be mapped to multiple scalar types`
+        `literal type '${type}' cannot be mapped to multiple scalar types`,
       );
     }
-    literalToScalarMapping[type] = {type: scalarType, literalKind};
+    literalToScalarMapping[type] = { type: scalarType, literalKind };
   }
 }
 
@@ -129,8 +131,8 @@ export function toTSScalarType(
     getEnumRef?: (type: introspect.Type) => string;
     edgedbDatatypePrefix: string;
   } = {
-    edgedbDatatypePrefix: "_."
-  }
+    edgedbDatatypePrefix: "_.",
+  },
 ): CodeFragment[] {
   switch (type.kind) {
     case "scalar": {
@@ -138,21 +140,21 @@ export function toTSScalarType(
         if (opts.getEnumRef) {
           return [opts.getEnumRef(type)];
         }
-        return [getRef(type.name, {prefix: ""})];
+        return [getRef(type.name, { prefix: "" })];
       }
 
       if (type.material_id) {
         return toTSScalarType(
           types.get(type.material_id) as introspect.ScalarType,
           types,
-          opts
+          opts,
         );
       }
 
       const literalType = scalarToLiteralMapping[type.name]?.type ?? "unknown";
       return [
         (literalType.startsWith("edgedb.") ? opts.edgedbDatatypePrefix : "") +
-          literalType
+        literalType,
       ];
     }
 
@@ -160,7 +162,7 @@ export function toTSScalarType(
       const tn = toTSScalarType(
         types.get(type.array_element_id) as introspect.PrimitiveType,
         types,
-        opts
+        opts,
       );
       return frag`${tn}[]`;
     }
@@ -176,11 +178,11 @@ export function toTSScalarType(
       ) {
         // a named tuple
         const res = [];
-        for (const {name, target_id} of type.tuple_elements) {
+        for (const { name, target_id } of type.tuple_elements) {
           const tn = toTSScalarType(
             types.get(target_id) as introspect.PrimitiveType,
             types,
-            opts
+            opts,
           );
           res.push(frag`${name}: ${tn}`);
         }
@@ -188,11 +190,11 @@ export function toTSScalarType(
       } else {
         // an ordinary tuple
         const res = [];
-        for (const {target_id} of type.tuple_elements) {
+        for (const { target_id } of type.tuple_elements) {
           const tn = toTSScalarType(
             types.get(target_id) as introspect.PrimitiveType,
             types,
-            opts
+            opts,
           );
           res.push(tn);
         }
@@ -204,7 +206,7 @@ export function toTSScalarType(
       const tn = toTSScalarType(
         types.get(type.range_element_id) as introspect.PrimitiveType,
         types,
-        opts
+        opts,
       );
       return frag`${opts.edgedbDatatypePrefix}edgedb.Range<${tn}>`;
     }
@@ -219,11 +221,11 @@ export function toTSObjectType(
   types: introspect.Types,
   currentMod: string,
   code: CodeBuilder,
-  level: number = 0
+  level = 0,
 ): CodeFragment[] {
   if (type.intersection_of && type.intersection_of.length) {
     const res: CodeFragment[][] = [];
-    for (const {id: subId} of type.intersection_of) {
+    for (const { id: subId } of type.intersection_of) {
       const sub = types.get(subId) as introspect.ObjectType;
       res.push(toTSObjectType(sub, types, currentMod, code, level + 1));
     }
@@ -233,7 +235,7 @@ export function toTSObjectType(
 
   if (type.union_of && type.union_of.length) {
     const res: CodeFragment[][] = [];
-    for (const {id: subId} of type.union_of) {
+    for (const { id: subId } of type.union_of) {
       const sub = types.get(subId) as introspect.ObjectType;
       res.push(toTSObjectType(sub, types, currentMod, code, level + 1));
     }
@@ -241,7 +243,7 @@ export function toTSObjectType(
     return level > 0 ? frag`(${ret})` : ret;
   }
 
-  return [getRef(type.name, {prefix: ""})];
+  return [getRef(type.name, { prefix: "" })];
 }
 
 export function capitalize(str: string) {
@@ -250,28 +252,27 @@ export function capitalize(str: string) {
 
 // convert FQN into capital camel case
 export function displayName(str: string) {
-  const {name} = splitName(str);
-  const stripped =
-    "$" +
+  const { name } = splitName(str);
+  const stripped = "$" +
     name
       .replace(/[^$0-9a-zA-Z]/g, " ")
       .split(" ")
-      .filter(x => !!x)
+      .filter((x) => !!x)
       .map(capitalize)
       .join("");
   // if (stripped === "Object") return `ObjectType`;
   return stripped;
 }
 
-export function getInternalName({fqn, id}: {fqn: string; id: string}) {
-  const {name} = splitName(fqn);
-  return makeValidIdent({id, name});
+export function getInternalName({ fqn, id }: { fqn: string; id: string }) {
+  const { name } = splitName(fqn);
+  return makeValidIdent({ id, name });
 }
 
 export function makeValidIdent({
   id,
   name,
-  skipKeywordCheck
+  skipKeywordCheck,
 }: {
   id: string;
   name: string;
@@ -289,13 +290,13 @@ export function makeValidIdent({
   return strippedName;
 }
 
-export function getRef(name: string, opts?: {prefix?: string}): IdentRef {
+export function getRef(name: string, opts?: { prefix?: string }): IdentRef {
   return {
     type: "identRef",
     name,
     opts: {
-      prefix: opts?.prefix ?? "$"
-    }
+      prefix: opts?.prefix ?? "$",
+    },
   };
 }
 
@@ -319,7 +320,7 @@ export function frag(
 
 export function joinFrags(
   frags: (CodeFragment | CodeFragment[])[],
-  sep: string
+  sep: string,
 ) {
   const joined: CodeFragment[] = [];
   for (const fragment of frags) {
@@ -377,22 +378,22 @@ export const reservedIdents = new Set([
   "protected",
   "implements",
   "instanceof",
-  "Object"
+  "Object",
 ]);
 
 export async function writeDirWithTarget(
   dir: DirBuilder,
   target: Target,
-  params: {outputDir: string; written?: Set<string>}
+  params: { outputDir: string; written?: Set<string> },
 ) {
-  const {outputDir, written = new Set<string>()} = params;
+  const { outputDir, written = new Set<string>() } = params;
   if (target === "ts") {
     await dir.write(outputDir, {
       mode: "ts",
       moduleKind: "esm",
       fileExtension: ".ts",
       moduleExtension: "",
-      written
+      written,
     });
   } else if (target === "mts") {
     await dir.write(outputDir, {
@@ -400,7 +401,7 @@ export async function writeDirWithTarget(
       moduleKind: "esm",
       fileExtension: ".mts",
       moduleExtension: ".mjs",
-      written
+      written,
     });
   } else if (target === "cjs") {
     await dir.write(outputDir, {
@@ -408,14 +409,14 @@ export async function writeDirWithTarget(
       moduleKind: "cjs",
       fileExtension: ".js",
       moduleExtension: "",
-      written
+      written,
     });
     await dir.write(outputDir, {
       mode: "dts",
       moduleKind: "esm",
       fileExtension: ".d.ts",
       moduleExtension: "",
-      written
+      written,
     });
   } else if (target === "esm") {
     await dir.write(outputDir, {
@@ -423,14 +424,14 @@ export async function writeDirWithTarget(
       moduleKind: "esm",
       fileExtension: ".mjs",
       moduleExtension: ".mjs",
-      written
+      written,
     });
     await dir.write(outputDir, {
       mode: "dts",
       moduleKind: "esm",
       fileExtension: ".d.ts",
       moduleExtension: "",
-      written
+      written,
     });
   } else if (target === "deno") {
     await dir.write(outputDir, {
@@ -438,7 +439,7 @@ export async function writeDirWithTarget(
       moduleKind: "esm",
       fileExtension: ".ts",
       moduleExtension: ".ts",
-      written
+      written,
     });
   }
 }

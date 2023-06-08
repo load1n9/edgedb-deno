@@ -1,27 +1,27 @@
-import {CodeBuffer, dts, r, t, ts, all} from "../builders.ts";
-import type {GeneratorParams} from "../genutil.ts";
+import { all, CodeBuffer, dts, r, t, ts } from "../builders.ts";
+import type { GeneratorParams } from "../genutil.ts";
 import {
   getRef,
   joinFrags,
   literalToScalarMapping,
   quote,
-  scalarToLiteralMapping
+  scalarToLiteralMapping,
 } from "../genutil.ts";
-import {$} from "../genutil.ts";
-import {getStringRepresentation} from "./generateObjectTypes.ts";
+import { $ } from "../genutil.ts";
+import { getStringRepresentation } from "./generateObjectTypes.ts";
 
-const getRuntimeRef = (name: string) => getRef(name, {prefix: ""});
+const getRuntimeRef = (name: string) => getRef(name, { prefix: "" });
 
 export const generateCastMaps = (params: GeneratorParams) => {
-  const {dir, types, casts, typesByName} = params;
-  const {implicitCastMap} = casts;
+  const { dir, types, casts, typesByName } = params;
+  const { implicitCastMap } = casts;
 
   const f = dir.getPath("castMaps");
   f.addImportStar("edgedb", "edgedb");
   f.addImportStar("$", "./reflection", {
     modes: ["ts", "dts"],
     allowFileExt: true,
-    typeOnly: true
+    typeOnly: true,
   });
 
   const reverseTopo = Array.from(types)
@@ -33,14 +33,14 @@ export const generateCastMaps = (params: GeneratorParams) => {
   /////////////////////////////////////
 
   const materialScalars = reverseTopo.filter(
-    type => type.kind === "scalar" && !type.is_abstract
+    (type) => type.kind === "scalar" && !type.is_abstract,
     // && (!type.enum_values || !type.enum_values.length)
   );
 
   const casting = (id: string) => {
     const type = types.get(id);
     const castable = $.util.deduplicate([
-      ...$.util.getFromArrayMap(implicitCastMap, type.id)
+      ...$.util.getFromArrayMap(implicitCastMap, type.id),
     ]);
     return castable;
   };
@@ -49,13 +49,13 @@ export const generateCastMaps = (params: GeneratorParams) => {
   assignableMap.writeln([
     t`export `,
     dts`declare `,
-    t`type scalarAssignableBy<T extends $.ScalarType> =`
+    t`type scalarAssignableBy<T extends $.ScalarType> =`,
   ]);
   const castableMap = new CodeBuffer();
   castableMap.writeln([
     t`export `,
     dts`declare `,
-    t`type scalarCastableFrom<T extends $.ScalarType> =`
+    t`type scalarCastableFrom<T extends $.ScalarType> =`,
   ]);
 
   const staticMap = new CodeBuffer();
@@ -70,18 +70,18 @@ export const generateCastMaps = (params: GeneratorParams) => {
         getStringRepresentation(types.get(outer.id), {
           types,
           casts: casts.assignableByMap,
-          castSuffix: "λIAssignableBy"
+          castSuffix: "λIAssignableBy",
         }).staticType
-      } : `
+      } : `,
     ]);
     castableMap.writeln([
       t`  T extends ${getRef(outer.name)} ? ${
         getStringRepresentation(types.get(outer.id), {
           types,
           casts: casts.implicitCastFromMap,
-          castSuffix: "λICastableTo"
+          castSuffix: "λICastableTo",
         }).staticType
-      } : `
+      } : `,
     ]);
 
     const outerCastableTo = casting(outer.id);
@@ -95,7 +95,7 @@ export const generateCastMaps = (params: GeneratorParams) => {
       const bCastableToA = innerCastableTo.includes(outer.id);
 
       let sharedParent: string | null = null;
-      const sharedParentId = outerCastableTo.find(type =>
+      const sharedParentId = outerCastableTo.find((type) =>
         innerCastableTo.includes(type)
       );
       if (sharedParentId) {
@@ -103,8 +103,8 @@ export const generateCastMaps = (params: GeneratorParams) => {
         sharedParent = sharedParentName;
       }
 
-      const validCast =
-        sameType || aCastableToB || bCastableToA || sharedParent;
+      const validCast = sameType || aCastableToB || bCastableToA ||
+        sharedParent;
 
       if (validCast) {
         staticMap.writeln([t`    B extends ${getRef(inner.name)} ?`]);
@@ -122,13 +122,13 @@ export const generateCastMaps = (params: GeneratorParams) => {
         } else if (sharedParent) {
           staticMap.writeln([t`    ${getRef(sharedParent)}`]);
           runtimeMap.writeln([
-            r`      return ${getRuntimeRef(sharedParent)};`
+            r`      return ${getRuntimeRef(sharedParent)};`,
           ]);
           returnTypes.add(sharedParent);
         } else {
           staticMap.writeln([t`    never`]);
           runtimeMap.writeln([
-            r`      throw new Error(\`Types are not castable: \${a.__name__}, \${b.__name__}\`);`
+            r`      throw new Error(\`Types are not castable: \${a.__name__}, \${b.__name__}\`);`,
           ]);
         }
         staticMap.writeln([t`    :`]);
@@ -138,7 +138,7 @@ export const generateCastMaps = (params: GeneratorParams) => {
 
     staticMap.writeln([t`    never`]);
     runtimeMap.writeln([
-      r`    throw new Error(\`Types are not castable: \${a.__name__}, \${b.__name__}\`);`
+      r`    throw new Error(\`Types are not castable: \${a.__name__}, \${b.__name__}\`);`,
     ]);
 
     staticMap.writeln([t`  :`]);
@@ -148,7 +148,7 @@ export const generateCastMaps = (params: GeneratorParams) => {
   castableMap.writeln([t`  never\n`]);
   staticMap.writeln([t`never\n`]);
   runtimeMap.writeln([
-    r`  throw new Error(\`Types are not castable: \${a.__name__}, \${b.__name__}\`);`
+    r`  throw new Error(\`Types are not castable: \${a.__name__}, \${b.__name__}\`);`,
   ]);
   runtimeMap.writeln([r`}\n`]);
 
@@ -168,11 +168,13 @@ export const generateCastMaps = (params: GeneratorParams) => {
     `, b`,
     t`: B`,
     `)`,
-    t`: ${joinFrags(
-      ["A", "B", ...[...returnTypes].map(type => getRef(type))],
-      " | "
-    )}`,
-    r` {`
+    t`: ${
+      joinFrags(
+        ["A", "B", ...[...returnTypes].map((type) => getRef(type))],
+        " | ",
+      )
+    }`,
+    r` {`,
   ]);
   f.writeln([r`  a = (a`, ts` as any`, r`).__casttype__ || a;`]);
   f.writeln([r`  b = (b`, ts` as any`, r`).__casttype__ || b;`]);
@@ -230,17 +232,21 @@ export const generateCastMaps = (params: GeneratorParams) => {
   f.writeln([
     r`const implicitCastMap = new Map`,
     ts`<string, Set<string>>`,
-    r`([`
+    r`([`,
   ]);
   f.indented(() => {
-    for (const [sourceId, castableTo] of Object.entries(
-      casts.implicitCastMap
-    )) {
+    for (
+      const [sourceId, castableTo] of Object.entries(
+        casts.implicitCastMap,
+      )
+    ) {
       if (castableTo.length) {
         f.writeln([
-          r`[${quote(types.get(sourceId).name)}, new Set([${castableTo
-            .map(targetId => quote(types.get(targetId).name))
-            .join(", ")}])],`
+          r`[${quote(types.get(sourceId).name)}, new Set([${
+            castableTo
+              .map((targetId) => quote(types.get(targetId).name))
+              .join(", ")
+          }])],`,
         ]);
       }
     }
@@ -258,7 +264,7 @@ export const generateCastMaps = (params: GeneratorParams) => {
   const _a = implicitCastMap.get(from),
         _b = _a != null ? _a.has(to) : null;
   return _b != null ? _b : false;
-};\n\n`
+};\n\n`,
   ]);
   f.addExport("isImplicitlyCastableTo");
 
@@ -267,32 +273,36 @@ export const generateCastMaps = (params: GeneratorParams) => {
   f.writeln([
     t`export `,
     dts`declare `,
-    t`type scalarLiterals =\n  | ${Object.keys(literalToScalarMapping).join(
-      "\n  | "
-    )}\n  | edgedb.Range<any>;\n\n`
+    t`type scalarLiterals =\n  | ${
+      Object.keys(literalToScalarMapping).join(
+        "\n  | ",
+      )
+    }\n  | edgedb.Range<any>;\n\n`,
   ]);
 
   f.writeln([
     dts`declare `,
-    t`type getTsType<T extends $.BaseType> = T extends $.ScalarType`
+    t`type getTsType<T extends $.BaseType> = T extends $.ScalarType`,
   ]);
   f.writeln([
-    t`  ? T extends ${joinFrags(
-      [...types.values()]
-        .filter(type => {
-          return (
-            type.kind === "scalar" &&
-            !type.is_abstract &&
-            !type.enum_values &&
-            !type.material_id &&
-            !type.cast_type &&
-            (!scalarToLiteralMapping[type.name] ||
-              !scalarToLiteralMapping[type.name].literalKind)
-          );
-        })
-        .map(scalar => getRef(scalar.name)),
-      " | "
-    )}`
+    t`  ? T extends ${
+      joinFrags(
+        [...types.values()]
+          .filter((type) => {
+            return (
+              type.kind === "scalar" &&
+              !type.is_abstract &&
+              !type.enum_values &&
+              !type.material_id &&
+              !type.cast_type &&
+              (!scalarToLiteralMapping[type.name] ||
+                !scalarToLiteralMapping[type.name].literalKind)
+            );
+          })
+          .map((scalar) => getRef(scalar.name)),
+        " | ",
+      )
+    }`,
   ]);
   f.writeln([t`    ? never`]);
   f.writeln([t`    : T["__tstype__"]`]);
@@ -302,7 +312,7 @@ export const generateCastMaps = (params: GeneratorParams) => {
   f.writeln([
     t`export `,
     dts`declare `,
-    t`type orScalarLiteral<T extends $.TypeSet> =`
+    t`type orScalarLiteral<T extends $.TypeSet> =`,
   ]);
   f.writeln([t`  | T`]);
   f.writeln([
@@ -313,7 +323,7 @@ export const generateCastMaps = (params: GeneratorParams) => {
     t`        : $.computeTsTypeCard<`,
     t`            getTsType<T["__element__"]>,`,
     t`            T["__cardinality__"]`,
-    t`          >);`
+    t`          >);`,
   ]);
   //  ? scalarLiterals : getTsType<T["__element__"]>);\n\n
 
@@ -327,29 +337,29 @@ export const generateCastMaps = (params: GeneratorParams) => {
   T["__name__"],
   T["__tstype__"],
   TsConstType
->;`
+>;`,
   ]);
 
   f.writeln([
     t`export `,
     dts`declare `,
-    t`type literalToScalarType<T extends any> =`
+    t`type literalToScalarType<T extends any> =`,
   ]);
-  for (const [literal, {type}] of Object.entries(literalToScalarMapping)) {
+  for (const [literal, { type }] of Object.entries(literalToScalarMapping)) {
     // skip date_duration on v1 instances
     if (!typesByName[type]) continue;
     f.writeln([
-      t`  T extends ${literal} ? scalarWithConstType<${getRef(type)}, T> :`
+      t`  T extends ${literal} ? scalarWithConstType<${getRef(type)}, T> :`,
     ]);
   }
   f.writeln([
-    t`  T extends edgedb.Range<infer E> ? $.RangeType<literalToScalarType<E>> :`
+    t`  T extends edgedb.Range<infer E> ? $.RangeType<literalToScalarType<E>> :`,
   ]);
   f.writeln([t`  $.BaseType;\n\n`]);
 
   f.writeln([
     dts`declare `,
-    t`type literalToTypeSet<T extends any> = T extends $.TypeSet`
+    t`type literalToTypeSet<T extends any> = T extends $.TypeSet`,
   ]);
   f.writeln([t`  ? T`]);
   f.writeln([t`  : $.$expr_Literal<literalToScalarType<T>>;\n\n`]);
@@ -358,7 +368,7 @@ export const generateCastMaps = (params: GeneratorParams) => {
   f.writeln([t`  [k in keyof T]: literalToTypeSet<T[k]>;`]);
   f.writeln([t`};\n\n`]);
 
-  f.addImportStar("literal", "./literal", {allowFileExt: true});
+  f.addImportStar("literal", "./literal", { allowFileExt: true });
 
   f.writeln([
     dts`declare `,
@@ -367,14 +377,16 @@ export const generateCastMaps = (params: GeneratorParams) => {
     all`)`,
     t`: $.TypeSet`,
     dts`;`,
-    r` {`
+    r` {`,
   ]);
   f.writeln([r`  if (type && type.__element__) {`]);
   f.writeln([r`    return type;`]);
   f.writeln([r`  }`]);
-  for (const [literalType, {literalKind, type}] of Object.entries(
-    literalToScalarMapping
-  )) {
+  for (
+    const [literalType, { literalKind, type }] of Object.entries(
+      literalToScalarMapping,
+    )
+  ) {
     const fullType = typesByName[type];
     // cal::date_duration won't be defined on v1 instances
     if (!fullType) continue;
@@ -390,7 +402,7 @@ export const generateCastMaps = (params: GeneratorParams) => {
     f.writeln([r`  }`]);
   }
   f.writeln([
-    r`  throw new Error(\`Cannot convert literal '\${type}' into scalar type\`);`
+    r`  throw new Error(\`Cannot convert literal '\${type}' into scalar type\`);`,
   ]);
   f.writeln([r`}`]);
   f.addExport("literalToTypeSet");

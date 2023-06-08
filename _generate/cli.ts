@@ -1,26 +1,27 @@
 #!/usr/bin/env node
+// deno-lint-ignore-file no-explicit-any
 
 // tslint:disable:no-console
-import {adapter} from "../mod.ts";
+import { adapter } from "../mod.ts";
 
-import {ConnectConfig, validTlsSecurityValues} from "../_src/conUtils.ts";
-import {parseConnectArguments} from "../_src/conUtils.server.ts";
+import { ConnectConfig, validTlsSecurityValues } from "../_src/conUtils.ts";
+import { parseConnectArguments } from "../_src/conUtils.server.ts";
 import {
   CommandOptions,
   promptForPassword,
-  readPasswordFromStdin
+  readPasswordFromStdin,
 } from "./commandutil.ts";
-import {generateQueryBuilder} from "./edgeql-js.ts";
-import {runInterfacesGenerator} from "./interfaces.ts";
-import {exitWithError} from "./genutil.ts";
-import {generateQueryFiles} from "./queries.ts";
+import { generateQueryBuilder } from "./edgeql-js.ts";
+import { runInterfacesGenerator } from "./interfaces.ts";
+import { exitWithError } from "./genutil.ts";
+import { generateQueryFiles } from "./queries.ts";
 
-const {path, readFileUtf8, exists} = adapter;
+const { path, readFileUtf8, exists } = adapter;
 
 enum Generator {
   QueryBuilder = "edgeql-js",
   Queries = "queries",
-  Interfaces = "interfaces"
+  Interfaces = "interfaces",
 }
 
 const run = async () => {
@@ -36,13 +37,13 @@ const run = async () => {
   }
   if (!generator || generator[0] === "-") {
     console.error(
-      `Error: No generator specified.\n  \`npx @edgedb/generate <generator>\`\nAvailable generators:\n - edgeql-js (query builder)\n - queries (query files)`
+      `Error: No generator specified.\n  \`npx @edgedb/generate <generator>\`\nAvailable generators:\n - edgeql-js (query builder)\n - queries (query files)`,
     );
     adapter.exit();
   }
   if (!Object.values(Generator).includes(generator)) {
     console.error(
-      `Error: Invalid generator "${generator}". Available generators:\n - edgeql-js (query builder)\n - queries (query files)`
+      `Error: Invalid generator "${generator}". Available generators:\n - edgeql-js (query builder)\n - queries (query files)`,
     );
     adapter.exit();
   }
@@ -116,7 +117,7 @@ const run = async () => {
       case "--password":
         if (options.passwordFromStdin === true) {
           exitWithError(
-            `Cannot use both --password and --password-from-stdin options`
+            `Cannot use both --password and --password-from-stdin options`,
           );
         }
         options.promptPassword = true;
@@ -124,7 +125,7 @@ const run = async () => {
       case "--password-from-stdin":
         if (options.promptPassword === true) {
           exitWithError(
-            `Cannot use both --password and --password-from-stdin options`
+            `Cannot use both --password and --password-from-stdin options`,
           );
         }
         options.passwordFromStdin = true;
@@ -132,21 +133,24 @@ const run = async () => {
       case "--tls-ca-file":
         connectionConfig.tlsCAFile = getVal();
         break;
-      case "--tls-security":
+      case "--tls-security": {
         const tlsSec: any = getVal();
         if (!validTlsSecurityValues.includes(tlsSec)) {
           exitWithError(
-            `Invalid value for --tls-security. Must be one of: ${validTlsSecurityValues
-              .map(x => `"${x}"`)
-              .join(" | ")}`
+            `Invalid value for --tls-security. Must be one of: ${
+              validTlsSecurityValues
+                .map((x) => `"${x}"`)
+                .join(" | ")
+            }`,
           );
         }
         connectionConfig.tlsSecurity = tlsSec;
         break;
-      case "--target":
+      }
+      case "--target": {
         if (generator === Generator.Interfaces) {
           exitWithError(
-            `--target is not supported for generator "${generator}"`
+            `--target is not supported for generator "${generator}"`,
           );
         }
         const target = getVal();
@@ -154,11 +158,12 @@ const run = async () => {
           exitWithError(
             `Invalid target "${
               target ?? ""
-            }", expected "deno", "mts", "ts", "esm" or "cjs"`
+            }", expected "deno", "mts", "ts", "esm" or "cjs"`,
           );
         }
         options.target = target as any;
         break;
+      }
       case "--out":
       case "--output-dir":
         if (
@@ -166,7 +171,7 @@ const run = async () => {
           generator === Generator.Queries
         ) {
           exitWithError(
-            `--output-dir is not supported for generator "${generator}"`
+            `--output-dir is not supported for generator "${generator}"`,
           );
         }
         options.out = getVal();
@@ -182,7 +187,7 @@ const run = async () => {
           }
         } else {
           exitWithError(
-            `Flag --file not supported for generator "${generator}"`
+            `Flag --file not supported for generator "${generator}"`,
           );
         }
 
@@ -190,7 +195,7 @@ const run = async () => {
       case "--watch":
         options.watch = true;
         exitWithError(
-          `Watch mode is not supported for generator "${generator}"`
+          `Watch mode is not supported for generator "${generator}"`,
         );
         break;
       case "--force-overwrite":
@@ -266,7 +271,7 @@ const run = async () => {
     if (!projectRoot) {
       throw new Error(
         `Failed to detect project root.
-Run this command inside an EdgeDB project directory or specify the desired target language with \`--target\``
+Run this command inside an EdgeDB project directory or specify the desired target language with \`--target\``,
       );
     }
 
@@ -275,7 +280,7 @@ Run this command inside an EdgeDB project directory or specify the desired targe
     const denoConfigPath = path.join(projectRoot, "deno.json");
     const denoJsonExists = await exists(denoConfigPath);
 
-    let packageJson: {type: string} | null = null;
+    let packageJson: { type: string } | null = null;
     const pkgJsonPath = path.join(projectRoot, "package.json");
     if (await exists(pkgJsonPath)) {
       packageJson = JSON.parse(await readFileUtf8(pkgJsonPath));
@@ -288,20 +293,19 @@ Run this command inside an EdgeDB project directory or specify the desired targe
     if (denoJsonExists) {
       options.target = "deno";
       console.log(
-        `Detected deno.json, generating TypeScript files with Deno-style imports.`
+        `Detected deno.json, generating TypeScript files with Deno-style imports.`,
       );
     } else if (tsConfigExists) {
       const tsConfig = tsConfigExists
         ? (await readFileUtf8(tsConfigPath)).toLowerCase()
         : "{}";
 
-      const supportsESM: boolean =
-        tsConfig.includes(`"module": "nodenext"`) ||
+      const supportsESM: boolean = tsConfig.includes(`"module": "nodenext"`) ||
         tsConfig.includes(`"module": "node12"`);
       if (supportsESM && packageJson?.type === "module") {
         options.target = "mts";
         console.log(
-          `Detected tsconfig.json with ES module support, generating .mts files with ESM imports.`
+          `Detected tsconfig.json with ES module support, generating .mts files with ESM imports.`,
         );
       } else {
         options.target = "ts";
@@ -311,11 +315,11 @@ Run this command inside an EdgeDB project directory or specify the desired targe
       if (packageJson?.type === "module") {
         options.target = "esm";
         console.log(
-          `Detected "type": "module" in package.json, generating .js files with ES module syntax.`
+          `Detected "type": "module" in package.json, generating .js files with ES module syntax.`,
         );
       } else {
         console.log(
-          `Detected package.json. Generating .js files with CommonJS module syntax.`
+          `Detected package.json. Generating .js files with CommonJS module syntax.`,
         );
         options.target = "cjs";
       }
@@ -329,7 +333,7 @@ Run this command inside an EdgeDB project directory or specify the desired targe
     const username = (
       await parseConnectArguments({
         ...connectionConfig,
-        password: ""
+        password: "",
       })
     ).connectionParams.user;
     connectionConfig.password = await promptForPassword(username);
@@ -343,7 +347,7 @@ Run this command inside an EdgeDB project directory or specify the desired targe
       await generateQueryBuilder({
         options,
         connectionConfig,
-        root: projectRoot
+        root: projectRoot,
       });
       adapter.process.exit();
       break;
@@ -351,14 +355,14 @@ Run this command inside an EdgeDB project directory or specify the desired targe
       await generateQueryFiles({
         options,
         connectionConfig,
-        root: projectRoot
+        root: projectRoot,
       });
       break;
     case Generator.Interfaces:
       await runInterfacesGenerator({
         options,
         connectionConfig,
-        root: projectRoot
+        root: projectRoot,
       });
       break;
   }

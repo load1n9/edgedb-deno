@@ -1,26 +1,28 @@
+// deno-lint-ignore-file no-explicit-any
 // tslint:disable:no-console
 
-import {adapter} from "../mod.ts";
-import type {ConnectConfig} from "../_src/conUtils.ts";
-import {CommandOptions, isTTY, promptBoolean} from "./commandutil.ts";
-import {$, Client, createClient} from "../mod.ts";
-import {DirBuilder} from "./builders.ts";
-import {syntax} from "./FILES.ts";
+import { adapter } from "../mod.ts";
+import type { ConnectConfig } from "../_src/conUtils.ts";
+import { CommandOptions, isTTY, promptBoolean } from "./commandutil.ts";
+import { $, Client, createClient } from "../mod.ts";
+import { DirBuilder } from "./builders.ts";
+import { syntax } from "./FILES.ts";
 
-import {generateCastMaps} from "./edgeql-js/generateCastMaps.ts";
-import {generateFunctionTypes} from "./edgeql-js/generateFunctionTypes.ts";
-import {generateGlobals} from "./edgeql-js/generateGlobals.ts";
-import {generateIndex} from "./edgeql-js/generateIndex.ts";
-import {generateObjectTypes} from "./edgeql-js/generateObjectTypes.ts";
-import {generateOperators} from "./edgeql-js/generateOperatorTypes.ts";
-import {generateRuntimeSpec} from "./edgeql-js/generateRuntimeSpec.ts";
-import {generateScalars} from "./edgeql-js/generateScalars.ts";
-import {generateSetImpl} from "./edgeql-js/generateSetImpl.ts";
+import { generateCastMaps } from "./edgeql-js/generateCastMaps.ts";
+import { generateFunctionTypes } from "./edgeql-js/generateFunctionTypes.ts";
+import { generateGlobals } from "./edgeql-js/generateGlobals.ts";
+import { generateIndex } from "./edgeql-js/generateIndex.ts";
+import { generateObjectTypes } from "./edgeql-js/generateObjectTypes.ts";
+import { generateOperators } from "./edgeql-js/generateOperatorTypes.ts";
+import { generateRuntimeSpec } from "./edgeql-js/generateRuntimeSpec.ts";
+import { generateScalars } from "./edgeql-js/generateScalars.ts";
+import { generateSetImpl } from "./edgeql-js/generateSetImpl.ts";
 
-const {path, fs, readFileUtf8, exists, exit, walk} = adapter;
+const { path, fs, readFileUtf8, exists, exit, walk } = adapter;
 
 // tslint:disable-next-line
-export const configFileHeader = `// EdgeDB query builder. To update, run \`npx @edgedb/generate edgeql-js\``;
+export const configFileHeader =
+  `// EdgeDB query builder. To update, run \`npx @edgedb/generate edgeql-js\``;
 
 export type GeneratorParams = {
   dir: DirBuilder;
@@ -51,7 +53,7 @@ export async function generateQueryBuilder(params: {
   options: CommandOptions;
   connectionConfig: ConnectConfig;
 }) {
-  const {root, options, connectionConfig} = params;
+  const { root, options, connectionConfig } = params;
 
   let outputDir: string;
   if (options.out) {
@@ -62,7 +64,7 @@ export async function generateQueryBuilder(params: {
     outputDir = path.join(root, "dbschema", "edgeql-js");
   } else {
     throw new Error(
-      `No edgedb.toml found. Initialize an EdgeDB project with\n\`edgedb project init\` or specify an output directory with \`--output-dir\``
+      `No edgedb.toml found. Initialize an EdgeDB project with\n\`edgedb project init\` or specify an output directory with \`--output-dir\``,
     );
   }
 
@@ -96,7 +98,7 @@ export async function generateQueryBuilder(params: {
   try {
     cxn = createClient({
       ...connectionConfig,
-      concurrency: 5
+      concurrency: 5,
     });
   } catch (e) {
     exitWithError(`Failed to connect: ${(e as Error).message}`);
@@ -108,14 +110,14 @@ export async function generateQueryBuilder(params: {
     // tslint:disable-next-line
     console.log(`Introspecting database schema...`);
 
-    const [types, scalars, casts, functions, operators, globals] =
-      await Promise.all([
+    const [types, scalars, casts, functions, operators, globals] = await Promise
+      .all([
         $.introspect.types(cxn),
         $.introspect.scalars(cxn),
         $.introspect.casts(cxn),
         $.introspect.functions(cxn),
         $.introspect.operators(cxn),
-        $.introspect.globals(cxn)
+        $.introspect.globals(cxn),
       ]);
 
     const typesByName: Record<string, $.introspect.Type> = {};
@@ -134,7 +136,7 @@ export async function generateQueryBuilder(params: {
       scalars,
       functions,
       globals,
-      operators
+      operators,
     };
     generateRuntimeSpec(generatorParams);
     generateCastMaps(generatorParams);
@@ -150,17 +152,17 @@ export async function generateQueryBuilder(params: {
 
     const importsFile = dir.getPath("imports");
 
-    importsFile.addExportStar("edgedb", {as: "edgedb"});
-    importsFile.addExportFrom({spec: true}, "./__spec__", {
-      allowFileExt: true
+    importsFile.addExportStar("edgedb", { as: "edgedb" });
+    importsFile.addExportFrom({ spec: true }, "./__spec__", {
+      allowFileExt: true,
     });
     importsFile.addExportStar("./syntax", {
       allowFileExt: true,
-      as: "syntax"
+      as: "syntax",
     });
     importsFile.addExportStar("./castMaps", {
       allowFileExt: true,
-      as: "castMaps"
+      as: "castMaps",
     });
   } finally {
     await cxn.close();
@@ -186,6 +188,7 @@ export async function generateQueryBuilder(params: {
     let oldContents = "";
     try {
       oldContents = await readFileUtf8(outputPath);
+      // deno-lint-ignore no-empty
     } catch {}
     if (oldContents !== f.content) {
       await fs.writeFile(outputPath, f.content);
@@ -198,7 +201,7 @@ export async function generateQueryBuilder(params: {
       moduleKind: "esm",
       fileExtension: ".ts",
       moduleExtension: "",
-      written
+      written,
     });
   } else if (target === "mts") {
     await dir.write(outputDir, {
@@ -206,7 +209,7 @@ export async function generateQueryBuilder(params: {
       moduleKind: "esm",
       fileExtension: ".mts",
       moduleExtension: ".mjs",
-      written
+      written,
     });
   } else if (target === "cjs") {
     await dir.write(outputDir, {
@@ -214,14 +217,14 @@ export async function generateQueryBuilder(params: {
       moduleKind: "cjs",
       fileExtension: ".js",
       moduleExtension: "",
-      written
+      written,
     });
     await dir.write(outputDir, {
       mode: "dts",
       moduleKind: "esm",
       fileExtension: ".d.ts",
       moduleExtension: "",
-      written
+      written,
     });
   } else if (target === "esm") {
     await dir.write(outputDir, {
@@ -229,14 +232,14 @@ export async function generateQueryBuilder(params: {
       moduleKind: "esm",
       fileExtension: ".mjs",
       moduleExtension: ".mjs",
-      written
+      written,
     });
     await dir.write(outputDir, {
       mode: "dts",
       moduleKind: "esm",
       fileExtension: ".d.ts",
       moduleExtension: "",
-      written
+      written,
     });
   } else if (target === "deno") {
     await dir.write(outputDir, {
@@ -244,14 +247,14 @@ export async function generateQueryBuilder(params: {
       moduleKind: "esm",
       fileExtension: ".ts",
       moduleExtension: ".ts",
-      written
+      written,
     });
   }
 
   const configPath = path.join(outputDir, "config.json");
   await fs.writeFile(
     configPath,
-    `${configFileHeader}\n${JSON.stringify({target})}\n`
+    `${configFileHeader}\n${JSON.stringify({ target })}\n`,
   );
   written.add(configPath);
 
@@ -270,7 +273,7 @@ export async function generateQueryBuilder(params: {
     console.log(
       `\nChecking the generated files into version control is
 not recommended. Consider updating the .gitignore of your
-project to exclude these files.`
+project to exclude these files.`,
     );
   } else if (options.updateIgnoreFile) {
     const gitIgnorePath = path.join(root, ".gitignore");
@@ -278,6 +281,7 @@ project to exclude these files.`
     let gitIgnoreFile: string | null = null;
     try {
       gitIgnoreFile = await readFileUtf8(gitIgnorePath);
+      // deno-lint-ignore no-empty
     } catch {}
 
     const vcsLine = path.posix.relative(root, outputDir);
@@ -297,12 +301,12 @@ is not recommended. Would you like to update .gitignore to ignore
 the query builder directory? The following line will be added:
 
    ${vcsLine}\n\n`,
-          true
+          true,
         )
       ) {
         await fs.appendFile(
           gitIgnorePath,
-          `${gitIgnoreFile === null ? "" : "\n"}${vcsLine}\n`
+          `${gitIgnoreFile === null ? "" : "\n"}${vcsLine}\n`,
         );
       }
     }
@@ -324,6 +328,7 @@ async function canOverwrite(outputDir: string, options: CommandOptions) {
         return true;
       }
     }
+    // deno-lint-ignore no-empty
   } catch {}
 
   const error = config
